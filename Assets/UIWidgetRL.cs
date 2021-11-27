@@ -24,11 +24,7 @@ public class UIWidgetRL : UIWidgetsPanel
         public override Widget build(BuildContext context)
         {
             return new Center(
-                child: new Container(
-                    color: Colors.orange,
-                    height: 100,
-                    width: 100
-                )
+                child: HelloWorld.GetWidget()
             );
         }
     }

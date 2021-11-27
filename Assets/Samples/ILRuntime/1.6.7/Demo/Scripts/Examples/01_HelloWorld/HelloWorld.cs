@@ -2,13 +2,16 @@
 using System.Collections;
 using System.IO;
 using ILRuntime.Runtime.Enviorment;
+using Unity.UIWidgets.widgets;
 //下面这行为了取消使用WWW的警告，Unity2018以后推荐使用UnityWebRequest，处于兼容性考虑Demo依然使用WWW
 #pragma warning disable CS0618
 public class HelloWorld : MonoBehaviour
 {
+    public GameObject uiwidgets;
+
     //AppDomain是ILRuntime的入口，最好是在一个单例类中保存，整个游戏全局就一个，这里为了示例方便，每个例子里面都单独做了一个
     //大家在正式项目中请全局只创建一个AppDomain
-    AppDomain appdomain;
+    static AppDomain appdomain;
 
     System.IO.MemoryStream fs;
     System.IO.MemoryStream p;
@@ -79,7 +82,12 @@ public class HelloWorld : MonoBehaviour
     {
         //HelloWorld，第一次方法调用
         appdomain.Invoke("HotFix_Project.InstanceClass", "StaticFunTest", null, null);
+        uiwidgets.SetActive(true);
+    }
 
+    public static Widget GetWidget()
+    {
+        return appdomain.Invoke("HotFix_Project.InstanceClass", "GetContainer", null, null) as Widget;
     }
 
     private void OnDestroy()
