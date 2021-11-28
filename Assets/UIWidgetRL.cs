@@ -4,6 +4,7 @@ using UnityEngine;
 using Unity.UIWidgets.engine;
 using Unity.UIWidgets.widgets;
 using uiwidgets;
+using Unity.UIWidgets.material;
 
 public class UIWidgetRL : UIWidgetsPanel
 {
@@ -23,9 +24,20 @@ public class UIWidgetRL : UIWidgetsPanel
     {
         public override Widget build(BuildContext context)
         {
-            return new Center(
-                child: HelloWorld.GetWidget()
-            );
+            return new MaterialApp(
+                home: new Center(
+                //child: HelloWorld.GetWidget()
+                child: new Home()
+            )
+                );
+        }
+    }
+
+    class Home: StatelessWidget
+    {
+        public override Widget build(BuildContext context)
+        {
+            return HelloWorld.GetHero(context);
         }
     }
 

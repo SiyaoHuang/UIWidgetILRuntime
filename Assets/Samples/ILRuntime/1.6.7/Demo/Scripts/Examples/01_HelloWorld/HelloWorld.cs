@@ -76,6 +76,21 @@ public class HelloWorld : MonoBehaviour
         appdomain.UnityMainThreadID = System.Threading.Thread.CurrentThread.ManagedThreadId;
 #endif
         //这里做一些ILRuntime的注册，HelloWorld示例暂时没有需要注册的
+        appdomain.DelegateManager.RegisterDelegateConvertor<Unity.UIWidgets.gestures.GestureTapCallback>((act) =>
+        {
+            return new Unity.UIWidgets.gestures.GestureTapCallback(() =>
+            {
+                ((System.Action)act)();
+            });
+        });
+        appdomain.DelegateManager.RegisterFunctionDelegate<Unity.UIWidgets.widgets.BuildContext, Unity.UIWidgets.widgets.Widget>();
+        appdomain.DelegateManager.RegisterDelegateConvertor<Unity.UIWidgets.widgets.WidgetBuilder>((act) =>
+        {
+            return new Unity.UIWidgets.widgets.WidgetBuilder((context) =>
+            {
+                return ((System.Func<Unity.UIWidgets.widgets.BuildContext, Unity.UIWidgets.widgets.Widget>)act)(context);
+            });
+        });
     }
 
     void OnHotFixLoaded()
@@ -88,6 +103,13 @@ public class HelloWorld : MonoBehaviour
     public static Widget GetWidget()
     {
         return appdomain.Invoke("HotFix_Project.InstanceClass", "GetContainer", null, null) as Widget;
+    }
+
+    public static Widget GetHero(BuildContext context)
+    {
+        var result = appdomain.Invoke("HotFix_Project.InstanceClass", "BuildWithContext", null, context) as Widget;
+        Debug.Log(result.ToString());
+        return result;
     }
 
     private void OnDestroy()
