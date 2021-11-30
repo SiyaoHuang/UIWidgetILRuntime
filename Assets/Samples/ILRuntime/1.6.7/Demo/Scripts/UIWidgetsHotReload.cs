@@ -1,32 +1,22 @@
 ﻿using UnityEngine;
 using System.Collections;
-using System.Collections.Generic;
 using System.IO;
-using ILRuntime.CLR.TypeSystem;
-using ILRuntime.CLR.Method;
-using ILRuntime.CLR.Utils;
-using ILRuntime.Runtime.Intepreter;
-using ILRuntime.Runtime.Stack;
 using ILRuntime.Runtime.Enviorment;
+using Unity.UIWidgets.widgets;
 //下面这行为了取消使用WWW的警告，Unity2018以后推荐使用UnityWebRequest，处于兼容性考虑Demo依然使用WWW
 #pragma warning disable CS0618
-
-public class CoroutineDemo : MonoBehaviour
+public class UIWidgetsHotReload : MonoBehaviour
 {
-    static CoroutineDemo instance;
-    public static CoroutineDemo Instance
-    {
-        get { return instance; }
-    }
+    public GameObject uiwidgets;
+
     //AppDomain是ILRuntime的入口，最好是在一个单例类中保存，整个游戏全局就一个，这里为了示例方便，每个例子里面都单独做了一个
     //大家在正式项目中请全局只创建一个AppDomain
-    AppDomain appdomain;
+    static AppDomain appdomain;
+
     System.IO.MemoryStream fs;
     System.IO.MemoryStream p;
-
     void Start()
     {
-        instance = this;
         StartCoroutine(LoadHotFixAssembly());
     }
 
@@ -39,6 +29,8 @@ public class CoroutineDemo : MonoBehaviour
 
         //!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
         //这个DLL文件是直接编译HotFix_Project.sln生成的，已经在项目中设置好输出目录为StreamingAssets，在VS里直接编译即可生成到对应目录，无需手动拷贝
+        //工程目录在Assets\Samples\ILRuntime\1.6\Demo\HotFix_Project~
+        //以下加载写法只为演示，并没有处理在编辑器切换到Android平台的读取，需要自行修改
 #if UNITY_ANDROID
         WWW www = new WWW(Application.streamingAssetsPath + "/HotFix_Project.dll");
 #else
@@ -73,7 +65,6 @@ public class CoroutineDemo : MonoBehaviour
             Debug.LogError("加载热更DLL失败，请确保已经通过VS打开Assets/Samples/ILRuntime/1.6/Demo/HotFix_Project/HotFix_Project.sln编译过热更DLL");
         }
 
-
         InitializeILRuntime();
         OnHotFixLoaded();
     }
@@ -84,20 +75,40 @@ public class CoroutineDemo : MonoBehaviour
         //由于Unity的Profiler接口只允许在主线程使用，为了避免出异常，需要告诉ILRuntime主线程的线程ID才能正确将函数运行耗时报告给Profiler
         appdomain.UnityMainThreadID = System.Threading.Thread.CurrentThread.ManagedThreadId;
 #endif
-        //这里做一些ILRuntime的注册
-        //使用Couroutine时，C#编译器会自动生成一个实现了IEnumerator，IEnumerator<object>，IDisposable接口的类，因为这是跨域继承，所以需要写CrossBindAdapter（详细请看04_Inheritance教程），Demo已经直接写好，直接注册即可
-        appdomain.RegisterCrossBindingAdaptor(new CoroutineAdapter());
-        appdomain.DebugService.StartDebugService(56000);
+        //这里做一些ILRuntime的注册，HelloWorld示例暂时没有需要注册的
+        appdomain.DelegateManager.RegisterDelegateConvertor<Unity.UIWidgets.gestures.GestureTapCallback>((act) =>
+        {
+            return new Unity.UIWidgets.gestures.GestureTapCallback(() =>
+            {
+                ((System.Action)act)();
+            });
+        });
+        appdomain.DelegateManager.RegisterFunctionDelegate<Unity.UIWidgets.widgets.BuildContext, Unity.UIWidgets.widgets.Widget>();
+        appdomain.DelegateManager.RegisterDelegateConvertor<Unity.UIWidgets.widgets.WidgetBuilder>((act) =>
+        {
+            return new Unity.UIWidgets.widgets.WidgetBuilder((context) =>
+            {
+                return ((System.Func<Unity.UIWidgets.widgets.BuildContext, Unity.UIWidgets.widgets.Widget>)act)(context);
+            });
+        });
     }
 
-    unsafe void OnHotFixLoaded()
+    void OnHotFixLoaded()
     {
-        appdomain.Invoke("HotFix_Project.TestCoroutine", "RunTest", null, null);
+        //HelloWorld，第一次方法调用
+        uiwidgets.SetActive(true);
     }
 
-    public void DoCoroutine(IEnumerator coroutine)
+    public static Widget GetWidget()
     {
-        StartCoroutine(coroutine);
+        return appdomain.Invoke("HotFix_Project.InstanceClass", "GetContainer", null, null) as Widget;
+    }
+
+    public static Widget GetHero(BuildContext context)
+    {
+        var result = appdomain.Invoke("HotFix_Project.InstanceClass", "BuildWithContext", null, context) as Widget;
+        Debug.Log(result.ToString());
+        return result;
     }
 
     private void OnDestroy()
@@ -108,5 +119,10 @@ public class CoroutineDemo : MonoBehaviour
             p.Close();
         fs = null;
         p = null;
+    }
+
+    void Update()
+    {
+
     }
 }
